@@ -70,6 +70,7 @@ uint8_t last_seconds = 0;
 bool display_time_in_24_h = false;
 
 //this tracks whether or not to display seconds on the clock display mode.
+bool display_seconds = false;
 
 bool connect_to_wifi(void)
 {
@@ -166,6 +167,8 @@ void print_time_from_NTP()
   uint8_t seconds = timeClient.getSeconds();
   if(last_seconds != seconds){
     last_seconds = seconds;
+    //create a time string to be displayed:
+
   }
   else{
     last_seconds = seconds;
