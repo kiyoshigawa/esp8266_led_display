@@ -16,7 +16,7 @@ The following items can be set via this method:
 #include <Arduino.h>
 #include <NTPClient.h>
 #include <esp8266_pins.h>
-#include <esp8266WIFI.h>
+#include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <EEPROM.h>
 #include <max7219.h>
