@@ -17,11 +17,12 @@ The following items can be set via this method:
 #include <stdint.h>
 #include <NTPClient.h>
 #include <esp8266_pins.h>
-#include <esp8266WIFI.h>
+#include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <EEPROM.h>
 #include <max7219.h>
 #include <fonts.h>
+#include <pgmspace.h>
 
 //wifi credentials - adjust to taste
 #define WIFI_NAME "801Labs-Guest"
@@ -234,19 +235,56 @@ void verify_time()
   }
 }
 
+// ref: https://stackoverflow.com/a/2603254/1053092
+static unsigned char lookup[16] = {
+0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
+0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf, };
+
+uint8_t reverse(uint8_t n) {
+   // Reverse the top and bottom nibble then swap them.
+   return (lookup[n&0b1111] << 4) | lookup[n>>4];
+}
+
+void render_font_char_to_buffer (char *string, int x_offset, uint8_t *buffer)
+{
+  uint16_t row_count = NUM_MAX*8;
+  uint8_t font_data_width = pgm_read_byte(font);
+  uint8_t font_char_width;
+  uint8_t font_char_column;
+  size_t font_data_offset;
+  size_t character_offset = 0;
+  char character;
+  while ((character = string[character_offset]) != '\0')
+  {
+    font_data_offset = 1 + (font_data_width * (character - 32));
+    font_char_width = pgm_read_byte(font + font_data_offset);
+    font_char_column = 0;
+    while (font_char_column < font_char_width)
+    {
+      scr[row_count - (x_offset + font_char_column + 1)] = reverse(pgm_read_byte(font + font_data_offset + 1 + font_char_column));
+      font_char_column++;
+    }
+    x_offset += font_char_width + 1;
+    character_offset++;
+  }
+}
+
 void display_error_pattern()
 {
   //this is how many columsn are in the screen buffer
-  uint16_t num_cols = NUM_MAX*8+8;
-  for(int i=0; i<num_cols; i++){
-    if(i%2){
-      scr[i] = B01010101;
-    }
-    else{
-      scr[i] = B10101010;
-    }
-    refreshAll();
-  }
+  // uint16_t num_cols = NUM_MAX*8+8;
+  // for(int i=0; i<num_cols; i++){
+  //   if(i%2){
+  //     scr[i] = B01010101;
+  //   }
+  //   else{
+  //     scr[i] = B10101010;
+  //   }
+  // }
+  
+  render_font_char_to_buffer("ConnErr", 0x00, scr);
+  refreshAllRot90();
+  // refreshAll();
 }
 
 void print_time_from_NTP()
@@ -285,7 +323,8 @@ void display_time(void)
   }
   else{
     //output an error pattern:
-    display_error_pattern();
+    invert(); // display_error_pattern();
+    refreshAllRot90();
   }
 }
 
