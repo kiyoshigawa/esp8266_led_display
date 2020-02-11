@@ -256,7 +256,7 @@ void render_font_char_to_buffer (char *string, int x_offset, uint8_t *buffer)
   char character;
   while ((character = string[character_offset]) != '\0')
   {
-    font_data_offset = 1 + (font_data_width * (character - 32));
+    font_data_offset = 1 + (font_data_width * character);
     font_char_width = pgm_read_byte(font + font_data_offset);
     font_char_column = 0;
     while (font_char_column < font_char_width)
