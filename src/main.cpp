@@ -33,6 +33,9 @@ The following items can be set via this method:
 #define _24H_MODE false
 #define EEPROM_HAS_BEEN_INITIALIZED 1
 
+//this is the offset from 0 for the ascii numerals - allows easy conversion of numbers into ascii characters:
+#define ASCII_NUMERAL_0_OFFSET 48
+
 //default brightness - can be from 0x0 to 0xF
 #define DEFAULT_BRIGHTNESS 0x6U
 
@@ -109,7 +112,7 @@ uint32_t display_brightness = DEFAULT_BRIGHTNESS;
 uint32_t current_time_offset = DEFAULT_TIME_OFFSET;
 
 //this is a string buffer that stores the current time for use in printing time strings to the display:
-uint8_t print_string_buffer[MAX_STRING_BUFFER_LENGTH];
+char print_string_buffer[MAX_STRING_BUFFER_LENGTH];
 
 //this is how many characters are currently being used in the string buffer:
 uint8_t current_num_chars_in_buffer = 0;
@@ -236,9 +239,10 @@ void verify_time()
 }
 
 // ref: https://stackoverflow.com/a/2603254/1053092
+//8-bit byte reverse function - i.e. 0b11000001 --> 0b10000011
 static unsigned char lookup[16] = {
 0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
-0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf, };
+0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf};
 
 uint8_t reverse(uint8_t n) {
    // Reverse the top and bottom nibble then swap them.
@@ -261,7 +265,12 @@ void render_font_char_to_buffer (char *string, int x_offset, uint8_t *buffer)
     font_char_column = 0;
     while (font_char_column < font_char_width)
     {
-      scr[row_count - (x_offset + font_char_column + 1)] = reverse(pgm_read_byte(font + font_data_offset + 1 + font_char_column));
+      //prevent buffer overflow crashes by making sure the offset is never larger than the number of bytes in scr[]:
+      uint8_t offset = row_count - (x_offset + font_char_column + 1);
+      if(offset >= NUM_MAX*8 + 8){
+        break;
+      }
+      scr[offset] = reverse(pgm_read_byte(font + font_data_offset + 1 + font_char_column));
       font_char_column++;
     }
     x_offset += font_char_width + 1;
@@ -271,20 +280,8 @@ void render_font_char_to_buffer (char *string, int x_offset, uint8_t *buffer)
 
 void display_error_pattern()
 {
-  //this is how many columsn are in the screen buffer
-  // uint16_t num_cols = NUM_MAX*8+8;
-  // for(int i=0; i<num_cols; i++){
-  //   if(i%2){
-  //     scr[i] = B01010101;
-  //   }
-  //   else{
-  //     scr[i] = B10101010;
-  //   }
-  // }
-  
   render_font_char_to_buffer("ConnErr", 0x00, scr);
-  refreshAllRot90();
-  // refreshAll();
+  refreshAll();
 }
 
 void print_time_from_NTP()
@@ -305,7 +302,22 @@ void print_time_from_NTP()
   if(last_seconds != seconds){
     last_seconds = seconds;
     //create a time string to be displayed:
-
+    if(hours >= 10){
+      print_string_buffer[0] = hours/10 + ASCII_NUMERAL_0_OFFSET; //larger digit of hours
+    } else {
+      print_string_buffer[0] = ' ';
+    }
+    print_string_buffer[1] = hours%10 + ASCII_NUMERAL_0_OFFSET; //smaller digit of hours
+    print_string_buffer[2] = ':';
+    print_string_buffer[3] = minutes/10 + ASCII_NUMERAL_0_OFFSET; //larger digit of minutes
+    print_string_buffer[4] = minutes%10 + ASCII_NUMERAL_0_OFFSET; //smaller digit of minutes
+    print_string_buffer[5] = ':';
+    print_string_buffer[6] = seconds/10 + ASCII_NUMERAL_0_OFFSET; //larger digit of seconds
+    print_string_buffer[7] = seconds%10 + ASCII_NUMERAL_0_OFFSET; //smaller digit of seconds
+    print_string_buffer[8] = '\0';
+    clr();
+    render_font_char_to_buffer(print_string_buffer, 0x00, scr);
+    refreshAll();
   }
   else{
     last_seconds = seconds;
@@ -323,8 +335,8 @@ void display_time(void)
   }
   else{
     //output an error pattern:
-    invert(); // display_error_pattern();
-    refreshAllRot90();
+    display_error_pattern();
+    refreshAll();
   }
 }
 

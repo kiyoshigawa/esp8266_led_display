@@ -11,7 +11,7 @@
 #define NUM_MAX 4
 
 //if your displays are rotated, change to 90, 270, or 0
-#define ROTATE 0
+#define ROTATE 90
 
 // MAX7219 commands:
 #define CMD_NOOP   0
