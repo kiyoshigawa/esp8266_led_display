@@ -23,10 +23,7 @@ The following items can be set via this method:
 #include <max7219.h>
 #include <fonts.h>
 #include <pgmspace.h>
-
-//wifi credentials - adjust to taste
-#define WIFI_NAME "801Labs-Guest"
-#define WIFI_PASS "DC801DC801"
+#include "wifi_creds.h"
 
 //these are named variables to make the intent of the code more readable.
 #define _12H_MODE true
@@ -46,7 +43,7 @@ The following items can be set via this method:
 #define DEFAULT_12H_24H_MODE _12H_MODE
 
 //Change this to adjust the default time zone on power up in seconds - Adjust as needed. (60 s/min * 60min/hour * (+/-)Offset in Hours)
-#define DEFAULT_TIME_OFFSET (60L * 60L * -7L)
+#define DEFAULT_TIME_OFFSET (60L * 60L * -6L)
 
 //this is how often the NTP client object will check for updates in milliseconds. (1000ms/s * 60s/min * 5 min)
 #define DEFAULT_NTP_SERVER_CHECK_INTERVAL (1000UL * 60UL * 5UL)
@@ -305,7 +302,7 @@ void print_time_from_NTP()
     if(hours >= 10){
       print_string_buffer[0] = hours/10 + ASCII_NUMERAL_0_OFFSET; //larger digit of hours
     } else {
-      print_string_buffer[0] = ' ';
+      print_string_buffer[0] = ' '; //lead with a space if the time has a leading 0.
     }
     print_string_buffer[1] = hours%10 + ASCII_NUMERAL_0_OFFSET; //smaller digit of hours
     print_string_buffer[2] = ':';
