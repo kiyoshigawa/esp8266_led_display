@@ -34,7 +34,7 @@ The following items can be set via this method:
 #define ASCII_NUMERAL_0_OFFSET 48
 
 //default brightness - can be from 0x0 to 0xF
-#define DEFAULT_BRIGHTNESS 0x6U
+#define DEFAULT_BRIGHTNESS 0x4U
 
 //default display mode for time - seconds on or off
 #define DEFAULT_DISPLAY_MODE false
@@ -43,7 +43,7 @@ The following items can be set via this method:
 #define DEFAULT_12H_24H_MODE _12H_MODE
 
 //Change this to adjust the default time zone on power up in seconds - Adjust as needed. (60 s/min * 60min/hour * (+/-)Offset in Hours)
-#define DEFAULT_TIME_OFFSET (60L * 60L * -6L)
+#define DEFAULT_TIME_OFFSET (60L * 60L * -7L)
 
 //this is how often the NTP client object will check for updates in milliseconds. (1000ms/s * 60s/min * 5 min)
 #define DEFAULT_NTP_SERVER_CHECK_INTERVAL (1000UL * 60UL * 5UL)
@@ -68,6 +68,11 @@ The following items can be set via this method:
 //the total is: (Number of bytes per item stored * (number of items being stored + 1U for the init address)):
 //the init address will be 0 of the EEPROM has not been initialized, and any other value in the LSB if it has been.
 #define NUM_EEPROM_BYTES (EEPROM_BYTE_OFFSET * (4U + 1U))
+
+//these are the pin numbers for the DST switch. One is used as a GND pin, since the PCB didn't have enough
+//the second pin is an input making use of the internal pullup resistor to check the state of the DST switch.
+#define DST_SWITCH_GND_PIN D3
+#define DST_SWITCH_PIN D4
 
 //these are the EEPROM addressed where things are stored:
 //the EEPROM data is bropken into 32-bit values, Least Significant Bytes first.
@@ -113,6 +118,9 @@ char print_string_buffer[MAX_STRING_BUFFER_LENGTH];
 
 //this is how many characters are currently being used in the string buffer:
 uint8_t current_num_chars_in_buffer = 0;
+
+//this will be updated by the DST switch. If DST is active, the hours counter will be incremented by 1
+bool DST_is_active = false;
 
 //this will write all 4 bytes of EEPROM memory with a 32-bit integer value
 void write_32_bit_EEPROM_value(unsigned int address, uint32_t value)
@@ -285,6 +293,12 @@ void print_time_from_NTP()
 {
   //first get the hours, minutes, and seconds
   uint8_t hours = timeClient.getHours();
+  if(DST_is_active) {
+    hours = hours + 1;
+    if(hours > 24) {
+      hours = 0;
+    }
+  }
   if(!display_time_in_24_h){
     //correct to 12h time display values from 24h time values provided by ntp
     if(hours > 12){
@@ -343,6 +357,11 @@ void setup()
   Serial.begin(115200);
   Serial.println();
 
+  // Configure the DST switch pins:
+  pinMode(DST_SWITCH_PIN, INPUT_PULLUP);
+  pinMode(DST_SWITCH_GND_PIN, OUTPUT);
+  digitalWrite(DST_SWITCH_GND_PIN, LOW);
+
   //set up the EEPROM section of the flash:
   EEPROM.begin(NUM_EEPROM_BYTES);
 
@@ -379,6 +398,8 @@ void loop()
 {
   //update the ntpClient object
   timeClient.update();
+  //check the state of the DST switch and set the bool accordingly:
+  DST_is_active = digitalRead(DST_SWITCH_PIN);
   //check connectivity and update time from remote NTP servers
   verify_time();
   //display the current time if a valid time has been received.
